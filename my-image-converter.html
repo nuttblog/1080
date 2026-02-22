@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Converter · 1080px</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0c0e;
+    --surface: #16161a;
+    --border: #2a2a30;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --success: #47ff8a;
+    --radius: 16px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 400px;
+    background: radial-gradient(ellipse, rgba(232,255,71,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #000;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    padding: 4px 12px;
+    border-radius: 100px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 10px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  .drop-zone {
+    width: 100%;
+    max-width: 640px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 64px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    background: var(--surface);
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(232,255,71,0.04);
+  }
+
+  .drop-zone.drag-over .drop-icon { transform: scale(1.1) translateY(-4px); }
+
+  .drop-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+    display: block;
+    transition: transform 0.25s ease;
+  }
+
+  .drop-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .drop-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  #fileInput { display: none; }
+
+  .btn-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 100px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-upload:hover { background: #fff; transform: translateY(-2px); }
+
+  /* Results */
+  #results {
+    width: 100%;
+    max-width: 640px;
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    animation: slideIn 0.35s ease forwards;
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  @keyframes slideIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-card.done { border-color: rgba(71,255,138,0.3); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .thumb {
+    width: 48px; height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--border);
+  }
+
+  .file-name {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  .status-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .status-badge.processing { background: rgba(232,255,71,0.15); color: var(--accent); }
+  .status-badge.done { background: rgba(71,255,138,0.15); color: var(--success); }
+  .status-badge.error { background: rgba(255,80,80,0.15); color: #ff8080; }
+
+  .card-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .info-block {
+    padding: 16px 20px;
+  }
+
+  .info-block:first-child {
+    border-right: 1px solid var(--border);
+  }
+
+  .info-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .info-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .info-value.highlight { color: var(--accent2); }
+
+  .card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .size-info {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .size-info span { color: var(--success); }
+
+  .btn-dl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .btn-dl:hover { background: #fff; transform: translateY(-1px); }
+
+  .progress-bar {
+    height: 2px;
+    background: var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.3s ease;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .clear-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+    align-self: center;
+    display: none;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .clear-btn.show { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">OUTPUT · 1080px WIDE · JPEG</div>
+  <h1>Image<br><span>Converter</span></h1>
+  <p class="sub">HEIC · WEBP · TIFF · PNG · any format → JPG @ 1080px</p>
+</header>
+
+<div class="drop-zone" id="dropZone">
+  <span class="drop-icon">📁</span>
+  <div class="drop-title">วาง หรือ เลือกรูปได้เลย</div>
+  <div class="drop-sub">
+    รองรับ HEIC, WEBP, TIFF, PNG, JPG, BMP, GIF, AVIF ฯลฯ<br>
+    เลือกได้หลายรูปพร้อมกัน
+  </div>
+  <button class="btn-upload" onclick="document.getElementById('fileInput').click()">
+    ⬆ เลือกไฟล์
+  </button>
+  <input type="file" id="fileInput" accept="image/*,.heic,.heif,.tiff,.tif,.webp,.avif" multiple>
+</div>
+
+<div id="results"></div>
+<button class="clear-btn" id="clearBtn" onclick="clearAll()">✕ ล้างทั้งหมด</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
+<script>
+const TARGET_WIDTH = 1080;
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const results = document.getElementById('results');
+const clearBtn = document.getElementById('clearBtn');
+
+// Drag & drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function clearAll() {
+  results.innerHTML = '';
+  fileInput.value = '';
+  clearBtn.classList.remove('show');
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function isHeic(file) {
+  const name = file.name.toLowerCase();
+  return name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+}
+
+async function handleFiles(files) {
+  if (!files.length) return;
+  clearBtn.classList.add('show');
+  for (const file of files) {
+    await processFile(file);
+  }
+}
+
+function createCard(file) {
+  const id = file.name.replace(/\W/g,'_');
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML = `
+    <div class="progress-bar"><div class="progress-fill" id="prog_${id}"></div></div>
+    <div class="card-header">
+      <div class="thumb-wrap" id="thumb_${id}" style="width:48px;height:48px;border-radius:8px;background:var(--border);flex-shrink:0;overflow:hidden;"></div>
+      <div class="file-name" title="${file.name}">${file.name}</div>
+      <div class="status-badge processing" id="status_${id}">กำลังแปลง…</div>
+    </div>
+    <div class="card-info">
+      <div class="info-block">
+        <div class="info-label">ขนาดเดิม</div>
+        <div class="info-value" id="orig_${id}">—</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ขนาดใหม่ (1080px)</div>
+        <div class="info-value highlight" id="new_${id}">—</div>
+      </div>
+    </div>
+    <div class="card-footer" id="footer_${id}">
+      <div class="size-info">ไฟล์เดิม: ${formatBytes(file.size)}</div>
+      <div></div>
+    </div>
+  `;
+  results.prepend(card);
+  return card;
+}
+
+async function processFile(file) {
+  const id = file.name.replace(/\W/g,'_');
+  const card = createCard(file);
+
+  setTimeout(() => { const p = document.getElementById(`prog_${id}`); if(p) p.style.width='40%'; }, 100);
+
+  try {
+    let imageBlob = file;
+
+    // --- HEIC handling ---
+    if (isHeic(file)) {
+      const status = document.getElementById(`status_${id}`);
+      if(status) status.textContent = 'ถอดรหัส HEIC…';
+
+      // heic2any can return blob or array of blobs (for burst)
+      const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 1 });
+      imageBlob = Array.isArray(result) ? result[0] : result;
+
+      const p = document.getElementById(`prog_${id}`);
+      if(p) p.style.width = '70%';
+    }
+
+    const finalBlob = await loadAndConvert(imageBlob, file, id);
+
+    const prog = document.getElementById(`prog_${id}`);
+    if(prog) { prog.style.width = '100%'; setTimeout(() => prog.style.display='none', 400); }
+
+    const status = document.getElementById(`status_${id}`);
+    if(status) { status.textContent = 'สำเร็จ'; status.className = 'status-badge done'; }
+
+    card.classList.add('done');
+
+    const url = URL.createObjectURL(finalBlob);
+    const outName = file.name.replace(/\.[^.]+$/, '') + '_1080.jpg';
+    const footer = document.getElementById(`footer_${id}`);
+    if(footer) {
+      footer.querySelector('.size-info').innerHTML = `ไฟล์เดิม: ${formatBytes(file.size)} → <span>${formatBytes(finalBlob.size)}</span>`;
+      footer.querySelector('div:last-child').innerHTML = `<a class="btn-dl" href="${url}" download="${outName}">⬇ ดาวน์โหลด</a>`;
+    }
+
+  } catch(err) {
+    const prog = document.getElementById(`prog_${id}`);
+    if(prog) prog.style.display = 'none';
+    const status = document.getElementById(`status_${id}`);
+    if(status) { status.textContent = 'ล้มเหลว'; status.className = 'status-badge error'; }
+    console.error(err);
+  }
+}
+
+function loadAndConvert(imageBlob, originalFile, id) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(imageBlob);
+
+    img.onload = () => {
+      const origW = img.naturalWidth;
+      const origH = img.naturalHeight;
+
+      const origEl = document.getElementById(`orig_${id}`);
+      if(origEl) origEl.textContent = `${origW} × ${origH} px`;
+
+      let newW, newH;
+      if (origW <= TARGET_WIDTH) {
+        newW = origW; newH = origH;
+      } else {
+        newW = TARGET_WIDTH;
+        newH = Math.round(origH * (TARGET_WIDTH / origW));
+      }
+
+      const newEl = document.getElementById(`new_${id}`);
+      if(newEl) newEl.textContent = `${newW} × ${newH} px`;
+
+      // Thumbnail
+      const thumbWrap = document.getElementById(`thumb_${id}`);
+      if(thumbWrap) {
+        const thumbImg = document.createElement('img');
+        thumbImg.src = url;
+        thumbImg.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+        thumbWrap.appendChild(thumbImg);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = newW; canvas.height = newH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, newW, newH);
+
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob(blob => {
+        if(!blob) return reject(new Error('Conversion failed'));
+        resolve(blob);
+      }, 'image/jpeg', 0.92);
+    };
+
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Cannot load image')); };
+    img.src = url;
+  });
+}
+</script>
+</body>
+</html>
