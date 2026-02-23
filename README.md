@@ -20,7 +20,7 @@ Just open the page, drop your images in, and download the converted files.
 
 ## Live Demo
 
-[nuttblog.github.io/jpx](https://nuttblog.github.io/jpx)
+[imnutt.github.io/1080](https://imnutt.github.io/1080)
 
 ## Tech
 
